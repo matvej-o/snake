@@ -7,17 +7,12 @@ import qualified              Prelude                                   (Either(
 import                        Control.Monad                             (unless)
 import                        Control.Monad.IO.Class                    (liftIO)
 import                        Data.Maybe                                (fromMaybe)
---import                        Data.Vector                                               hiding (elem, update, head)
---import qualified              Data.Vector.Storable              as VecS  (toList)
 import                        System.Random
---import                        Data.Char
---import                        Foreign.C.Types
 import                        Graphics.GPipe                                            hiding (normalize)
 import qualified "GPipe-GLFW" Graphics.GPipe.Context.GLFW       as GLFW
 import qualified "GPipe-GLFW" Graphics.GPipe.Context.GLFW.Input as GLFW
 import                        Graphics.UI.GLFW                          (WindowHint(..))
 import                        Codec.Picture
---import           "lens"       Control.Lens
 import                        Data.Word                                 (Word8)
 import                        Data.Int                                  (Int32)
 import                        Control.Applicative                       (pure)
@@ -313,75 +308,6 @@ vizualizeScore score = [ format (5,  13) $ toSprite 'G'
 convertX x = let xDimensionHalfed = (fromIntegral $ fst dimensions) / 2 in (fromIntegral x - xDimensionHalfed) / xDimensionHalfed
 convertY y = let yDimensionHalfed = (fromIntegral $ snd dimensions) / 2 in (fromIntegral y - yDimensionHalfed) / yDimensionHalfed
 
-
-{-- OLD CONSOLE STUFF
-(+++) = (Data.Vector.++)
-
-main :: IO ()
-main = do
-         let snake = Snake (fst dimensions `div` 2, snd dimensions `div` 2) Up Nothing
-         fruitPosition <- randomFruitPosition snake []
-         let startingState = GameState snake [Fruit fruitPosition] 0   
-         putStrLn "THE SNAKE GAME"
-         draw . visualize $ startingState
-         putStrLn "YOUR SCORE: 0"
-         loop startingState
-         
-         putStrLn "GAME OVER" -- when we are finished
-
-loop :: GameState -> IO ()
-loop gameState@(GameState snake fruits score) = do
-                   putStrLn "Enter the next input (w/a/s/d/q): "
-                   {--line <- getLine
-                   let key = toKey line--}
-                   key <- readChar
-                   let input = decodeInput key
-                   
-                   let event = update input gameState
-                   gameState' <- (case event of
-                                SnakeUpdate snake' -> pure $ GameState snake' fruits score
-                                FruitEaten fruit fruits' -> do
-                                                              let direction = fromMaybe (headDirection snake) input
-                                                              fruitPosition <- randomFruitPosition snake fruits
-                                                              pure $ GameState (Snake (position fruit) direction (Just snake)) (Fruit fruitPosition : fruits') $ score + 1
-                                GameOver -> pure gameState
-                                 )
-                   draw . visualize $ gameState'
-                   putStr "YOUR SCORE: "
-                   putStrLn . show . getScore $ gameState'
-                   unless (key == 'q' || gameOver event) $ loop gameState'
-
---
-readChar = chr . fromEnum <$> c_getch
-foreign import ccall unsafe "conio.h getch"
-  c_getch :: IO CInt
-
-decodeInput :: Char -> Maybe Direction
-decodeInput 'w' = Just Up
-decodeInput 's' = Just Down
-decodeInput 'a' = Just Left
-decodeInput 'd' = Just Right
-decodeInput  _  = Nothing
-
-toKey :: String -> Char
-toKey [] = ' '
-toKey (x:xs) = x
-
-visualize :: GameState -> Vector (Vector Char)
-visualize (GameState snake fruits _) = generate (fst dimensions) $ \y -> generate (snd dimensions) $ \x -> go x y
-    where go x y
-            | (x, y) == headSnake = '▒'
-            | (x, y) `elem` flatSnake = '█'
-            | (x, y) `elem` unfruits = '@'
-            | otherwise = ' '
-          (headSnake, flatSnake) = flatten snake
-          unfruits = position <$> fruits
-
-draw :: Vector (Vector Char) -> IO ()
-draw = putStrLn . toList . (Data.Vector.foldr1 (\x y -> y +++ cons '\n' x))
-
---}
-
 randomFruitPosition :: Snake -> [Fruit] -> IO Position
 randomFruitPosition snake fruits = do
                                      let occupiedPositions = (Prelude.++) (snakeSegments snake) $ position <$> fruits
@@ -435,11 +361,6 @@ flattenTail :: Maybe Snake -> [(Position, Direction)]
 flattenTail Nothing = []
 flattenTail (Just (Snake pos dir snakes)) = (pos, dir) : flattenTail snakes
 
-{--
-flatten :: Snake -> (Position, [Position])
-flatten (Snake pos _ maybeSnake) = (pos, fromMaybe [] $ snakeSegments <$> maybeSnake)
---}
-
 snakeSegments :: Snake -> [Position]
 snakeSegments (Snake pos _ maybeSnake) = case maybeSnake of
                                          Just snake -> pos : (snakeSegments snake)
@@ -466,12 +387,6 @@ data GameState = GameState Snake [Fruit] Integer
 data Event = SnakeUpdate Snake
            | FruitEaten Fruit [Fruit] 
            | GameOver deriving Show
-
-{--
-gameOver :: Event -> Bool
-gameOver GameOver = True
-gameOver _        = False
---}
 
 getScore :: GameState -> Integer
 getScore (GameState _ _ score) = score
